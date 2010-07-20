@@ -231,6 +231,8 @@
     <Compile Include="Res\WCell.RealmServer.Designer.cs" />
     <Compile Include="Spells\Auras\DamagePctAmplifierHandler.cs" />
     <Compile Include="Spells\Auras\Misc\AttackModifierHandler.cs" />
+    <Compile Include="Spells\Auras\Mod\ModAPByArmorHandler.cs" />
+    <Compile Include="Spells\Auras\Mod\CriticalBlockPctHandler.cs" />
     <Compile Include="Spells\Auras\Mod\ModRageFromDamageDealtPercentHandler.cs" />
     <Compile Include="Spells\Auras\Mod\ModHitChanceHandler.cs" />
     <Compile Include="Spells\Auras\Mod\ModArmorPenetrationHandler.cs" />
@@ -241,6 +243,7 @@
     <Compile Include="Spells\Auras\NPCAuraCollection.cs" />
     <Compile Include="Spells\Auras\PlayerAuraCollection.cs" />
     <Compile Include="Spells\InvalidSpellDataException.cs" />
+    <Compile Include="Spells\SpellException.cs" />
     <Compile Include="Stats\RealmStatsExtended.cs" />
     <Compile Include="Stats\RealmStats.cs" />
     <Compile Include="Global\World.cs" />

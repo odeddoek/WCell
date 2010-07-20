@@ -116,7 +116,13 @@ namespace WCell.RealmServer.Spells
 		/// Whether it happens multiple times (certain Auras or channeled effects)
 		/// </summary>
 		[NotPersistent]
-		public bool IsPeriodic, IsPeriodicAura;
+		public bool IsPeriodic;
+
+		/// <summary>
+		/// Probably useless
+		/// </summary>
+		[NotPersistent]
+		public bool _IsPeriodicAura;
 
 		/// <summary>
 		/// Whether this effect has actual Objects as targets
@@ -261,8 +267,9 @@ namespace WCell.RealmServer.Spells
 		#region Init & Auto Generation of fields
 		internal void Init2()
 		{
-			ValueMin = BasePoints + DiceSides;
-			ValueMax = BasePoints + (DiceSides/* * DiceCount*/); // TODO: check this!
+			// see http://www.wowhead.com/spell=25269 for comparison
+			ValueMin = BasePoints + 1;
+			ValueMax = BasePoints + DiceSides; // TODO: check this!
 
 			IsTargetAreaEffect = TargetAreaEffects.Contains(ImplicitTargetA) || TargetAreaEffects.Contains(ImplicitTargetB);
 
@@ -283,7 +290,7 @@ namespace WCell.RealmServer.Spells
 
 			if (IsPeriodic = Amplitude > 0)
 			{
-				IsPeriodicAura = (AuraType == AuraType.PeriodicDamage ||
+				_IsPeriodicAura = (AuraType == AuraType.PeriodicDamage ||
 								  AuraType == AuraType.PeriodicDamagePercent ||
 								  AuraType == AuraType.PeriodicEnergize ||
 								  AuraType == AuraType.PeriodicHeal ||
@@ -322,7 +329,8 @@ namespace WCell.RealmServer.Spells
 			{
 				HarmType = HarmType.Harmful;
 			}
-			else
+			else if (!HasTarget(ImplicitTargetType.Duel) && 
+				(ImplicitTargetA != ImplicitTargetType.None || ImplicitTargetB != ImplicitTargetType.None))
 			{
 				HarmType = HarmType.Beneficial;
 			}
@@ -531,15 +539,20 @@ namespace WCell.RealmServer.Spells
 				if (APValueFactor != 0 || APPerComboPointValueFactor != 0)
 				{
 					var ap = APValueFactor + (APPerComboPointValueFactor * caster.ComboPoints);
-					value += (int)(caster.TotalMeleeAP * ap);
+					value += (int)(caster.TotalMeleeAP * ap + 0.5f);
 				}
 			}
 			return value;
 		}
 
+		public int CalcEffectValue()
+		{
+			return CalcEffectValue(0, 0);
+		}
+
 		public int CalcEffectValue(int level, int comboPoints)
 		{
-			var value = BasePoints;
+			var value = BasePoints+1;
 
 			// apply Unit boni
 			value += (int)Math.Round(RealPointsPerLevel * Spell.GetMaxLevelDiff(level));
@@ -547,9 +560,9 @@ namespace WCell.RealmServer.Spells
 
 			// die += (uint)Math.Round(Effect.DicePerLevel * caster.Level);
 
-			// dice boni
-			value += DiceSides;
-			//value += Utility.Random(DiceCount, DiceCount * DiceSides);
+			// dice bonus
+			// see http://www.wowhead.com/spell=25269 for comparison
+			value += Utility.Random(0, DiceSides);
 
 			return value;
 		}
@@ -849,16 +862,18 @@ namespace WCell.RealmServer.Spells
 		#endregion
 
 		#region Modify Effects
-		public void AddToEffectMask(SpellLineId ability)
+		public void AddToEffectMask(params SpellLineId[] abilities)
 		{
-			var spell = SpellLines.GetLine(ability).FirstRank;
-			for (int i = 0; i < AffectMask.Length; i++)
+			foreach (var ability in abilities)
 			{
-				AffectMask[i] |= spell.SpellClassMask[i];
+				var spell = SpellLines.GetLine(ability).FirstRank;
+				for (int i = 0; i < AffectMask.Length; i++)
+				{
+					AffectMask[i] |= spell.SpellClassMask[i];
+				}
 			}
 		}
 
 		#endregion
 	}
 }
-

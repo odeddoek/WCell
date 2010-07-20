@@ -1309,4 +1309,3 @@ namespace WCell.RealmServer.Quests
 		public int Value;
 	}
 }
-

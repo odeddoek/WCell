@@ -122,7 +122,7 @@ namespace WCell.RealmServer.Spells
 		public SpellFailedReason ValidateTarget(WorldObject target, TargetFilter filter)
 		{
 			var handler = FirstHandler;
-
+			var caster = handler.Cast.Caster;
 			var spell = handler.Effect.Spell;
 
 			if (!target.CheckObjType(handler.TargetType))
@@ -130,9 +130,12 @@ namespace WCell.RealmServer.Spells
 				return SpellFailedReason.BadTargets;
 			}
 
-			var caster = handler.Cast.Caster;
-			var failReason = spell.CheckValidTarget(caster, target);
+			if ((spell.FacingFlags & SpellFacingFlags.RequiresInFront) != 0 && !target.IsInFrontOf(caster))
+			{
+				return SpellFailedReason.NotInfront;
+			}
 
+			var failReason = spell.CheckValidTarget(caster, target);
 			if (failReason != SpellFailedReason.Ok)
 			{
 				return failReason;
@@ -798,21 +801,25 @@ namespace WCell.RealmServer.Spells.Extensions
 			var cast = targets.Cast;
 			var caster = cast.Caster;
 			var isHarmful = cast.Spell.HasHarmfulEffects;
+			var isHarmfulAndBeneficial = cast.Spell.HasHarmfulEffects == cast.Spell.HasBeneficialEffects;
 
-			if (isHarmful != caster.MayAttack(target))
+			if (!isHarmfulAndBeneficial)
 			{
-				if (isHarmful)
+				if (isHarmful != caster.MayAttack(target))
 				{
-					failedReason = SpellFailedReason.TargetFriendly;
+					if (isHarmful)
+					{
+						failedReason = SpellFailedReason.TargetFriendly;
+					}
+					else
+					{
+						failedReason = SpellFailedReason.TargetEnemy;
+					}
 				}
-				else
+				else if (isHarmful && !target.CanBeHarmed)
 				{
-					failedReason = SpellFailedReason.TargetEnemy;
+					failedReason = SpellFailedReason.NotHere;
 				}
-			}
-			else if (isHarmful && !target.CanBeHarmed)
-			{
-				failedReason = SpellFailedReason.NotHere;
 			}
 		}
 

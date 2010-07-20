@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -447,16 +447,27 @@ namespace WCell.Constants.Spells
 		Aura_250 = 250,
 		Aura_251 = 251,
 		Aura_252 = 252,
-		Aura_253 = 253,
+		/// <summary>
+		/// Gives a % chance to "block double the normal amount".
+		/// See: WarriorProtectionCriticalBlock
+		/// </summary>
+		CriticalBlockPct = 253,
 		Aura_254 = 254,
-		Aura_255 = 255,
+		/// <summary>
+		/// Increases damage taken from bleed in %
+		/// </summary>
+		IncreaseBleedEffectPct = 255,
 		Aura_256 = 256,
 		Aura_257 = 257,
 		Aura_258 = 258,
 		Aura_259 = 259,
 		Aura_260 = 260,
 		Phase = 261, // Highest as of 2.4.3.8606
-		Aura_262 = 262,
+		/// <summary>
+		/// Enables the abilities that match the effect's AffectMask, despite
+		/// certain constraints (eg. enables use of abilities in combat etc).
+		/// </summary>
+		EnableAbilityMask = 262,
 		Aura_263 = 263,
 		Unused_264 = 264,
 		Unused_265 = 265,
@@ -483,7 +494,8 @@ namespace WCell.Constants.Spells
 		Aura_283 = 283, // Highest in 3.0.2.9056
 		Aura_284 = 284,
 		/// <summary>
-		/// Increases your attack power by X for every Y armor value you have.
+		/// Increases your attack power by X for every Y armor you have.
+		/// Always comes together with a Dummy effect
 		/// </summary>
 		ModAPByArmor = 285,
 		Aura_286 = 286,

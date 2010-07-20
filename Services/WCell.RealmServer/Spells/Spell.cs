@@ -24,6 +24,7 @@ using WCell.Constants;
 using WCell.Constants.Items;
 using WCell.Constants.Skills;
 using WCell.Constants.Spells;
+using WCell.RealmServer.Content;
 using WCell.RealmServer.Entities;
 using WCell.RealmServer.Items;
 using WCell.RealmServer.Misc;
@@ -123,6 +124,11 @@ namespace WCell.RealmServer.Spells
 		/// whether this is teaching another spell
 		/// </summary>
 		public bool IsTeachSpell;
+
+		/// <summary>
+		/// Whether it has any individual or category cooldown
+		/// </summary>
+		public bool HasCooldown;
 
 		public bool HasIndividualCooldown;
 
@@ -584,6 +590,8 @@ namespace WCell.RealmServer.Spells
 			HasIndividualCooldown = CooldownTime > 0 ||
 				(IsWeaponAbility && !IsOnNextStrike && EquipmentSlot != EquipmentSlot.End);
 
+			HasCooldown = HasIndividualCooldown || CategoryCooldownTime > 0;
+
 			//IsAoe = HasEffectWith((effect) => {
 			//    if (effect.ImplicitTargetA == ImplicitTargetType.)
 			//        effect.ImplicitTargetA = ImplicitTargetType.None;
@@ -613,6 +621,7 @@ namespace WCell.RealmServer.Spells
 			{
 				ToString();
 			}
+
 			if (IsPreventionDebuff || Mechanic.IsNegative())
 			{
 				HasHarmfulEffects = true;
@@ -687,7 +696,9 @@ namespace WCell.RealmServer.Spells
             IsThrow = AttributesExC.HasFlag(SpellAttributesExC.ShootRangedWeapon) &&
                        Attributes.HasFlag(SpellAttributes.Ranged) && Ability != null && Ability.Skill.Id == SkillId.Thrown;
 
-			HasModifierEffects = HasEffectWith(effect => effect.AuraType == AuraType.AddModifierFlat || effect.AuraType == AuraType.AddModifierPercent);
+			HasModifierEffects = HasModifierEffects || 
+				HasEffectWith(effect => effect.AuraType == AuraType.AddModifierFlat || effect.AuraType == AuraType.AddModifierPercent);
+
 			ForeachEffect(effect =>
 			{
 				for (var i = 0; i < 3; i++)
@@ -762,6 +773,7 @@ namespace WCell.RealmServer.Spells
 					return effect;
 				}
 			}
+			ContentHandler.OnInvalidClientData("Spell {0} does not contain Effect of type {1}", this, type);
 			return null;
 		}
 
@@ -777,6 +789,7 @@ namespace WCell.RealmServer.Spells
 					return effect;
 				}
 			}
+			ContentHandler.OnInvalidClientData("Spell {0} does not contain Aura Effect of type {1}", this, type);
 			return null;
 		}
 
@@ -792,7 +805,7 @@ namespace WCell.RealmServer.Spells
 			return null;
 		}
 
-		public List<SpellEffect> GetEffectsWith(Predicate<SpellEffect> predicate)
+		public List<SpellEffect> GetEffectsWhere(Predicate<SpellEffect> predicate)
 		{
 			List<SpellEffect> effects = null;
 			foreach (var effect in Effects)
@@ -996,7 +1009,8 @@ namespace WCell.RealmServer.Spells
 
 		public bool ShouldShowToClient()
 		{
-			return IsRangedAbility || Visual != 0 || Visual2 != 0 || IsChanneled || CastDelay > 0
+			return IsRangedAbility || Visual != 0 || Visual2 != 0 ||
+			       IsChanneled || CastDelay > 0 || HasCooldown;
 				// || (!IsPassive && IsAura)
 				;
 		}
