@@ -66,7 +66,7 @@ namespace WCell.RealmServer.Entities
 		/// </summary>
 		public static float RegenTickMultiplier = 5.0f;
 
-	    public static float RegenTickDelay = 1.0f;
+		public static float RegenTickDelay = 1.0f;
 
 		/// <summary>
 		/// The amount of milliseconds for the time of "Interrupted" power regen
@@ -122,6 +122,8 @@ namespace WCell.RealmServer.Entities
 
 		protected Unit m_FirstAttacker;
 
+		private Unit m_LastKiller;
+
 		protected bool m_IsPinnedDown;
 
 		protected internal TimerEntry m_TaxiMovementTimer;
@@ -167,6 +169,22 @@ namespace WCell.RealmServer.Entities
 		}
 
 		/// <summary>
+		/// The Unit that last killed this guy or null, if none or gone (is not reliable over time).
+		/// </summary>
+		public Unit LastKiller
+		{
+			get
+			{
+				if (!m_LastKiller.IsInWorld)
+				{
+					m_LastKiller = null;
+				}
+				return m_LastKiller;
+			}
+			internal set { m_LastKiller = value; }
+		}
+
+		/// <summary>
 		/// Whether this Unit is currently participating in PvP.
 		/// That is if both participants are players and/or belong to players.
 		/// </summary>
@@ -176,8 +194,8 @@ namespace WCell.RealmServer.Entities
 			{
 				return
 					m_FirstAttacker != null &&
-					IsPlayerControlled &&
-					m_FirstAttacker.IsPlayerControlled;
+					BelongsToPlayer &&
+					m_FirstAttacker.BelongsToPlayer;
 			}
 		}
 
@@ -305,6 +323,18 @@ namespace WCell.RealmServer.Entities
 			return false;
 		}
 		#endregion
+
+		/// <summary>
+		/// Returns one of the arbitrary modifier values
+		/// </summary>
+		public int GetIntMod(StatModifierInt stat)
+		{
+			if (IntMods != null)
+			{
+				return IntMods[(int) stat];
+			}
+			return 0;
+		}
 
 		#region Death
 		public virtual bool IsAlive
@@ -794,7 +824,7 @@ namespace WCell.RealmServer.Entities
 		{
 			var critChance = 0f;
 			var crit = false;
-            int overheal = 0;
+			int overheal = 0;
 
 			if (healer == null)
 			{
@@ -823,7 +853,7 @@ namespace WCell.RealmServer.Entities
 
 					if (roll <= critChance)
 					{
-						value = (int)(value * SpellHandler.SpellCritBaseFactor);
+						value = (int)(value * (SpellHandler.SpellCritBaseFactor + GetIntMod(StatModifierInt.CriticalHealValuePct)));
 						crit = true;
 					}
 				}
@@ -831,19 +861,30 @@ namespace WCell.RealmServer.Entities
 
 			if (value > 0)
 			{
-                value = (int)(value * Utility.Random(0.95f, 1.05f));
-                if (Health + value > MaxHealth)
-                {
-                    overheal = (Health + value) - MaxHealth;
-                    value = (MaxHealth - Health);
-                }
-                Health += value;
-                value += overheal;
-                CombatLogHandler.SendHealLog(healer, this, effect != null ? effect.Spell.Id : 0, value, crit, overheal);
+				value = (int)(value * Utility.Random(0.95f, 1.05f));
+				if (Health + value > MaxHealth)
+				{
+					overheal = (Health + value) - MaxHealth;
+					value = (MaxHealth - Health);
+				}
+				Health += value;
+				value += overheal;
+				CombatLogHandler.SendHealLog(healer, this, effect != null ? effect.Spell.Id : 0, value, crit, overheal);
 			}
 
 			if (healer is Unit)
 			{
+				var action = new HealAction
+				{
+					Attacker = (Unit)healer,
+					Victim = this,
+					Spell = effect != null ? effect.Spell : null,
+					IsCritical = crit,
+					Value = value
+				};
+				((Unit)healer).Proc(ProcTriggerFlags.HealOther, this, action, true);
+				Proc(ProcTriggerFlags.Heal, ((Unit)healer), action, false);
+
 				OnHeal((Unit)healer, effect, value);
 			}
 		}
@@ -1395,9 +1436,9 @@ namespace WCell.RealmServer.Entities
 			}
 			if (selected is Unit)
 			{
-				return Power >= spell.CalcPowerCost(this, ((Unit)selected).GetLeastResistant(spell), spell, spell.PowerType);
+				return Power >= spell.CalcPowerCost(this, ((Unit)selected).GetLeastResistant(spell));
 			}
-			return Power >= spell.CalcPowerCost(this, spell.Schools[0], spell, spell.PowerType);
+			return Power >= spell.CalcPowerCost(this, spell.Schools[0]);
 		}
 
 		public DamageSchool GetLeastResistant(Spell spell)
@@ -1502,13 +1543,13 @@ namespace WCell.RealmServer.Entities
 			minion.Master = this;
 
 			var type = minion.Entry.Type;
-			if (type != NPCType.None && type != NPCType.NotSpecified)
+			if (type != CreatureType.None && type != CreatureType.NotSpecified)
 			{
-				if (type == NPCType.NonCombatPet)
+				if (type == CreatureType.NonCombatPet)
 				{
 					minion.Brain.DefaultState = BrainState.Follow;
 				}
-				else if (type == NPCType.Totem)
+				else if (type == CreatureType.Totem)
 				{
 					// can't move
 					minion.Brain.DefaultState = BrainState.Roam;
@@ -1651,7 +1692,10 @@ namespace WCell.RealmServer.Entities
 					{
 						var charges = proc.StackCount;
 						proc.TriggerProc(triggerer, action);
-						proc.NextProcTime = now.AddMilliseconds(proc.MinProcDelay);
+						if (proc.MinProcDelay > 0)
+						{
+							proc.NextProcTime = now.AddMilliseconds(proc.MinProcDelay);
+						}
 
 						if (charges > 0 && proc.StackCount == 0)
 						{

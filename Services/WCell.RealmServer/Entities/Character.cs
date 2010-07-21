@@ -16,21 +16,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using NLog;
 using WCell.Constants;
 using WCell.Constants.Factions;
 using WCell.Constants.Items;
 using WCell.Constants.Misc;
-using WCell.Constants.NPCs;
-using WCell.Constants.Pets;
 using WCell.Constants.Spells;
-using WCell.Constants.Talents;
 using WCell.Constants.Updates;
 using WCell.Constants.World;
 using WCell.RealmServer.Chat;
 using WCell.RealmServer.Commands;
-using WCell.RealmServer.Database;
 using WCell.RealmServer.Factions;
 using WCell.RealmServer.Formulas;
 using WCell.RealmServer.Global;
@@ -44,7 +39,6 @@ using WCell.RealmServer.Looting;
 using WCell.RealmServer.Misc;
 using WCell.RealmServer.Modifiers;
 using WCell.RealmServer.NPCs;
-using WCell.RealmServer.NPCs.Pets;
 using WCell.RealmServer.Quests;
 using WCell.RealmServer.Spells;
 using WCell.RealmServer.Talents;
@@ -52,14 +46,10 @@ using WCell.RealmServer.Taxi;
 using WCell.Util;
 using WCell.Util.Commands;
 using WCell.RealmServer.Battlegrounds;
-using WCell.Util.Collections;
 using WCell.Util.Graphics;
-using WCell.Util.Threading;
 using WCell.RealmServer.Spells.Auras;
-using WCell.RealmServer.Guilds;
 using WCell.Core.Timers;
 using WCell.RealmServer.RacesClasses;
-using WCell.Constants.Looting;
 
 namespace WCell.RealmServer.Entities
 {
@@ -356,8 +346,9 @@ namespace WCell.RealmServer.Entities
 		{
 			base.OnDamageAction(action);
 
-			var chr = action.Attacker as Character;
-			var pvp = IsPvPing && chr != null;
+			var pvp = action.Attacker.IsPvPing;
+			var chr = action.Attacker.PlayerMaster;
+
 			var killingBlow = !IsAlive;
 
 			if (action.Attacker != null &&
@@ -385,22 +376,39 @@ namespace WCell.RealmServer.Entities
 
 			if (killingBlow)
 			{
-				// this Character died in the process
-				if (pvp)
-				{
-					if (YieldsXpOrHonor)
-					{
-						chr.Proc(ProcTriggerFlags.GainExperience, this, action, true);
-						chr.OnHonorableKill(action);
-					}
-				}
-				else
+				if (!pvp)
 				{
 					// durability loss
 					m_inventory.ApplyDurabilityLoss(PlayerInventory.DeathDurabilityLossPct);
 				}
 
 				m_region.RegionInfo.NotifyPlayerDied(action);
+			}
+		}
+
+		/// <summary>
+		/// Finds the item for the given slot. Unequips it if it may not currently be used.
+		/// Returns the item to be equipped or null, if invalid.
+		/// </summary>
+		protected override IWeapon GetOrInvalidateItem(InventorySlotType type)
+		{
+			var slot = (int) ItemMgr.EquipmentSlotsByInvSlot[(int) type][0];
+			var item = m_inventory[slot];
+			if (item == null)
+			{
+				return null;
+			}
+
+			InventoryError err = InventoryError.OK;
+			m_inventory.Equipment.CheckAdd(slot, 1, item, ref err);
+			if (err == InventoryError.OK)
+			{
+				return item;
+			}
+			else
+			{
+				item.Unequip();
+				return null;
 			}
 		}
 
@@ -1611,11 +1619,6 @@ namespace WCell.RealmServer.Entities
 		}
 		#endregion
 
-		public override string ToString()
-		{
-			return Name + " (ID: " + EntityId + ", Account: " + Account + ")";
-		}
-
 		public void ActivateAllTaxiNodes()
 		{
 			for (var i = 0; i < TaxiMgr.PathNodesById.Length; i++)
@@ -1852,7 +1855,6 @@ namespace WCell.RealmServer.Entities
 			{
 				m_zone.Info.OnHonorableKill(this, victim);
 			}
-			m_region.OnHonorableKill(action);
 		}
 
 		private uint CalcHonorForKill(Character victim)
@@ -2104,5 +2106,10 @@ namespace WCell.RealmServer.Entities
 			return new[] { this };
 		}
 		#endregion
+
+		public override string ToString()
+		{
+			return Name + " (ID: " + EntityId + ", Account: " + Account + ")";
+		}
 	}
 }

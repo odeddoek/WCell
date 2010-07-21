@@ -488,7 +488,12 @@ namespace WCell.Constants
 
 		DodgeChance,
 
-		CritDamageBonusPct
+		CritDamageBonusPct,
+
+		AttackerMeleeHitChance,
+		AttackerRangedHitChance,
+
+		CriticalHealValuePct
 	}
 
 	public enum AreaTriggerType : uint

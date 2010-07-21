@@ -41,8 +41,8 @@ namespace WCell.RealmServer.Entities
 		protected int[] m_baseResistances = new int[DamageSchoolCount];
 		protected UnitModelInfo m_model;
 
-		internal readonly int[] StatModsInt = new int[UnitUpdates.FlatIntModCount + 1];
-		internal readonly float[] MultiplierMods = new float[UnitUpdates.MultiplierModCount + 1];
+		internal readonly int[] IntMods = new int[UnitUpdates.FlatIntModCount + 1];
+		internal readonly float[] FloatMods = new float[UnitUpdates.MultiplierModCount + 1];
 		//internal readonly int[] BaseMods = new int[UnitUpdates.BaseModCount];
 		//internal readonly float[] FlatModsFloat = new float[UnitUpdates.FlatFloatModCount];
 
@@ -1226,11 +1226,6 @@ namespace WCell.RealmServer.Entities
 			}
 			Health = MaxHealth;
 			Power = BasePower;
-		}
-
-		public bool BelongsToPlayer
-		{
-			get { return IsPlayer || (m_master != null && m_master.IsPlayer); }
 		}
 
 		/// <summary>

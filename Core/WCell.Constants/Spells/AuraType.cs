@@ -74,7 +74,7 @@ namespace WCell.Constants.Spells
 		/// </summary>
 		Aura_48 = 48,
 		ModDodgePercent = 49,
-		ModBlockSkill = 50,
+		ModCritHealValuePct = 50,
 		ModBlockPercent = 51,
 		ModCritPercent = 52,
 		PeriodicLeech = 53,
@@ -94,7 +94,7 @@ namespace WCell.Constants.Spells
 		PeriodicManaLeech = 64,
 		ModCastingSpeed = 65,
 		FeignDeath = 66,
-		ModDisarm = 67,
+		DisarmMainHand = 67,
 		ModStalked = 68,
 		SchoolAbsorb = 69,
 		ExtraAttacks = 70,
@@ -300,7 +300,7 @@ namespace WCell.Constants.Spells
 		ModFactionReputationGainPercent = 190,
 		UseNormalMovementSpeed = 191,
 		ModMeleeHastePercent = 192,
-		ModTimeBetweenAttacks = 193,
+		ModHastePct = 193,
 		/// <summary>
 		/// No longer unused as of 3.0.2
 		/// Function may have changed though
@@ -320,7 +320,7 @@ namespace WCell.Constants.Spells
 		ModAttackerCritChancePercent = 197,
 		Unused_ModAllWeaponSkills = 198,
 		/// <summary>
-		/// What is this?
+		/// Used exactly like ModSpellHitChance
 		/// </summary>
 		ModSpellHitChance2 = 199,
 		ModXpPct = 200,
@@ -408,13 +408,13 @@ namespace WCell.Constants.Spells
 		/// </summary>
 		Vehicle = 236,
 		/// <summary>
-		/// Increases your spell power by an amount equal to X% of your attack power.
+		/// Increases your spell power by an amount equal to a percentage of your attack power.
 		/// </summary>
 		ModSpellPowerByAPPct = 237,
 		/// <summary>
-		/// Always in combo with Aura_237, unnecessary (adding this would add spell power twice)
+		/// Always in combo with ModSpellPowerByAPPct -> unnecessary (adding this would add spell power twice)
 		/// </summary>
-		Aura_238 = 238,
+		ModHealingPowerByAPPct = 238,
 		/// <summary>
 		/// Noggenfogger Elixir (Id: 16595)
 		/// </summary>
@@ -440,7 +440,10 @@ namespace WCell.Constants.Spells
 		/// </summary>
 		ComprehendLanguage = 244,
 		ModMagicEffectDurationPercent = 245,
-		Aura_246 = 246,
+		/// <summary>
+		/// Used in Pure of Heart and Master Poisoner
+		/// </summary>
+		ModPoisonDurationPct = 246,
 		Aura_247 = 247,
 		ModChanceTargetDodgesAttackPercent = 248,
 		Aura_249 = 249,
@@ -452,7 +455,11 @@ namespace WCell.Constants.Spells
 		/// See: WarriorProtectionCriticalBlock
 		/// </summary>
 		CriticalBlockPct = 253,
-		Aura_254 = 254,
+
+		/// <summary>
+		/// Disarms offhand and/or shield (same slot)
+		/// </summary>
+		DisarmOffhandAndShield = 254,
 		/// <summary>
 		/// Increases damage taken from bleed in %
 		/// </summary>
@@ -486,7 +493,10 @@ namespace WCell.Constants.Spells
 		Aura_275 = 275,
 		Aura_276 = 276,
 		Aura_277 = 277,
-		Aura_278 = 278,
+		/// <summary>
+		/// 
+		/// </summary>
+		DisarmRanged = 278,
 		Aura_279 = 279,
 		ModArmorPenetration = 280,
 		Aura_281 = 281,
@@ -506,15 +516,15 @@ namespace WCell.Constants.Spells
 		/// <summary>
 		/// Only: Deterrence (Id: 67801) [Deterrence_3]
 		/// </summary>
-		Aura_288 = 288,
+		Aura_288_Unused = 288,
 		/// <summary>
 		/// Only: PaladinProtectionCombatExpertise (no apparent effect)
 		/// </summary>
-		Aura_290 = 290,
+		Aura_290_Unused = 290,
 		/// <summary>
 		/// Always with ModXpPct (no apparent effect)
 		/// </summary>
-		Aura_291 = 291,
+		Aura_291_Unused = 291,
 		Aura_292 = 292,
 		Aura_293 = 293,
         Aura_294 = 294,
@@ -531,5 +541,13 @@ namespace WCell.Constants.Spells
         Aura_305 = 305,
         Aura_306 = 307,
 		End = 500
+	}
+
+	[Flags]
+	public enum DisarmMask : uint
+	{
+		MainHand = 1,
+		Ranged = 2,
+		Offhand = 3
 	}
 }
