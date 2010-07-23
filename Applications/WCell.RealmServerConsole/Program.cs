@@ -20,6 +20,7 @@ using NLog;
 using System.Runtime;
 using System.Threading;
 using WCell.RealmServer.Lang;
+using WCell.RealmServer.Spells;
 using WCell.Util.Lang;
 using WCell.Util.NLog;
 using System.Text.RegularExpressions;
@@ -40,8 +41,10 @@ namespace WCell.RealmServerConsole
         	{
         		GCSettings.LatencyMode = GCLatencyMode.Interactive;
         	}
+
         	Thread.CurrentThread.IsBackground = true;
 
+			Spell.ForceDataPresence = true;
         	RealmServer.Program.Start();
         	RealmServerConsole.Run();
         }

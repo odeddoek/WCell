@@ -40,7 +40,6 @@ namespace WCell.Addons.Default.Spells.Warrior
 				}
 			});
 
-
 			// Concussion Blow deals AP based school damage
 			SpellLineId.WarriorProtectionConcussionBlow.Apply(spell =>
 			{
@@ -62,21 +61,15 @@ namespace WCell.Addons.Default.Spells.Warrior
 			SpellLineId.WarriorProtectionLastStand.Apply(spell =>
 			{
 				lastStandEffect = spell.GetEffect(SpellEffectType.Dummy);
-				if (lastStandEffect != null)
-				{
-					lastStandEffect.EffectType = SpellEffectType.TriggerSpell;
-					lastStandEffect.TriggerSpellId = SpellId.ClassSkillLastStand;
-				}
+				lastStandEffect.EffectType = SpellEffectType.TriggerSpell;
+				lastStandEffect.TriggerSpellId = SpellId.ClassSkillLastStand;
 			});
 			SpellHandler.Apply(spell =>
 			{
 				var effect = spell.GetEffect(AuraType.ModIncreaseHealth);
-				if (effect != null && lastStandEffect != null)
-				{
-					effect.AuraEffectHandlerCreator = () => new AddMaxHealthPctToHealthHandler();
-					effect.BasePoints = lastStandEffect.BasePoints;
-					effect.DiceSides = lastStandEffect.DiceSides;
-				}
+				effect.AuraType = AuraType.ModIncreaseHealthPercent;	// increase health in %
+				effect.BasePoints = lastStandEffect.BasePoints;			// set correct value
+				effect.DiceSides = lastStandEffect.DiceSides;
 			}, SpellId.ClassSkillLastStand);
 
 			// Safe Guard should only affect Intervene
@@ -107,27 +100,11 @@ namespace WCell.Addons.Default.Spells.Warrior
 			SpellLineId.WarriorProtectionDamageShield.Apply(spell =>
 			{
 				var effect = spell.GetEffect(AuraType.Dummy);
-				effect.AuraEffectHandlerCreator = () => new DamageShieldHandler();
+				effect.AuraEffectHandlerCreator = () => new WarriorDamageShieldHandler();
 			});
 		}
 
-		public class AddMaxHealthPctToHealthHandler : AuraEffectHandler
-		{
-			private int health;
-
-			protected override void Apply()
-			{
-				health = ((Owner.MaxHealth * EffectValue) + 50) / 100;	//rounded
-				Owner.Health += health;
-			}
-
-			protected override void Remove(bool cancelled)
-			{
-				Owner.Health -= health;
-			}
-		}
-
-		class DamageShieldHandler : AttackEventEffectHandler
+		class WarriorDamageShieldHandler : AttackEventEffectHandler
 		{
 
 			public override void OnBeforeAttack(DamageAction action)
@@ -146,12 +123,14 @@ namespace WCell.Addons.Default.Spells.Warrior
 				if (action.Blocked > 0)
 				{
 					var dmg = (action.Blocked * EffectValue + 50) / 100;
-					action.Victim.AddMessage(() =>
+					var victim = action.Victim;
+					var attacker = action.Attacker;
+
+					victim.AddMessage(() =>
 					{
-						if (action.Attacker.IsInWorld && action.Victim.MayAttack(action.Attacker))
+						if (victim.MayAttack(attacker))
 						{
-							// TODO: Add mods to damage?
-							action.Attacker.DoSpellDamage(action.Victim, SpellEffect, dmg);
+							attacker.DoSpellDamage(victim, SpellEffect, dmg);
 						}
 					});
 				}

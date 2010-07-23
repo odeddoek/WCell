@@ -36,6 +36,7 @@ using WCell.Util;
 using WCell.Util.Data;
 using System.Text.RegularExpressions;
 using WCell.Util.Graphics;
+using WCell.Util.Variables;
 
 namespace WCell.RealmServer.Spells
 {
@@ -65,6 +66,9 @@ namespace WCell.RealmServer.Spells
 
 		public static readonly Spell[] EmptyArray = new Spell[0];
 
+		[NotVariable]
+		public static bool ForceDataPresence = false;
+
 		#region Harmful SpellEffects
 		//public static readonly HashSet<SpellEffectType> HarmfulSpellEffects = new Func<HashSet<SpellEffectType>>(() => {
 		//    var effects = new HashSet<SpellEffectType>();
@@ -88,7 +92,7 @@ namespace WCell.RealmServer.Spells
 		/// <summary>
 		/// whether this is an ability involving any kind of weapon-attack
 		/// </summary>
-		public bool IsWeaponAbility;
+		public bool IsPhysicalAbility;
 
 		/// <summary>
 		/// Whether this can trigger an instant Strike
@@ -274,11 +278,6 @@ namespace WCell.RealmServer.Spells
 		/// </summary>
 		public ItemTemplate[] RequiredTools;
 
-		/// <summary>
-		/// The SpellLine this Spell belongs to (or null)
-		/// </summary>
-		public SpellLine SpellLine;
-
 		public Spell NextRank, PreviousRank;
 
 		/// <summary>
@@ -335,7 +334,7 @@ namespace WCell.RealmServer.Spells
 
 		public bool IsEnhancer;
 
-		private bool inited;
+		private bool init1, init2;
 
 		public SpellLine Line;
 		#endregion
@@ -453,6 +452,7 @@ namespace WCell.RealmServer.Spells
 		/// </summary>
 		internal void Initialize()
 		{
+			init1 = true;
 			var learnSpellEffect = GetEffect(SpellEffectType.LearnSpell);
 			if (learnSpellEffect == null)
 			{
@@ -513,10 +513,11 @@ namespace WCell.RealmServer.Spells
 		/// </summary>
 		internal void Init2()
 		{
-			if (inited)
+			if (init2)
 			{
 				return;
 			}
+			init2 = true;
 
 			IsChanneled = AttributesEx.HasAnyFlag(SpellAttributesEx.Channeled_1 | SpellAttributesEx.Channeled_2) ||	// don't use Enum.HasFlag!
 				ChannelInterruptFlags > 0;
@@ -568,7 +569,7 @@ namespace WCell.RealmServer.Spells
 
 			IsStrikeSpell = HasEffectWith(effect => effect.IsStrikeEffect);
 
-			IsWeaponAbility = IsRangedAbility || IsOnNextStrike || IsStrikeSpell;
+			IsPhysicalAbility = IsRangedAbility || IsOnNextStrike || IsStrikeSpell;
 
 			DamageIncreasedByAP = DamageIncreasedByAP || (PowerType == PowerType.Rage && SchoolMask == DamageSchoolMask.Physical);
 
@@ -593,7 +594,7 @@ namespace WCell.RealmServer.Spells
 			}
 
 			HasIndividualCooldown = CooldownTime > 0 ||
-				(IsWeaponAbility && !IsOnNextStrike && EquipmentSlot != EquipmentSlot.End);
+				(IsPhysicalAbility && !IsOnNextStrike && EquipmentSlot != EquipmentSlot.End);
 
 			HasCooldown = HasIndividualCooldown || CategoryCooldownTime > 0;
 
@@ -704,6 +705,9 @@ namespace WCell.RealmServer.Spells
 			HasModifierEffects = HasModifierEffects ||
 				HasEffectWith(effect => effect.AuraType == AuraType.AddModifierFlat || effect.AuraType == AuraType.AddModifierPercent);
 
+			// cannot taunt players
+			CanCastOnPlayer = CanCastOnPlayer && !HasEffect(AuraType.ModTaunt);
+
 			ForeachEffect(effect =>
 			{
 				for (var i = 0; i < 3; i++)
@@ -746,7 +750,6 @@ namespace WCell.RealmServer.Spells
 			{
 				SpellHandler.QuestCompletors.Add(this);
 			}
-			inited = true;
 		}
 		#endregion
 
@@ -805,7 +808,7 @@ namespace WCell.RealmServer.Spells
 			}
 			//ContentHandler.OnInvalidClientData("Spell {0} does not contain Effect of type {1}", this, type);
 			//return null;
-			if (inited && force)
+			if (!init1 && force)
 			{
 				throw new ContentException("Spell {0} does not contain Effect of type {1}", this, type);
 			}
@@ -817,7 +820,7 @@ namespace WCell.RealmServer.Spells
 		/// </summary>
 		public SpellEffect GetEffect(AuraType type)
 		{
-			return GetEffect(type, true);
+			return GetEffect(type, ForceDataPresence);
 		}
 
 		/// <summary>
@@ -834,7 +837,7 @@ namespace WCell.RealmServer.Spells
 			}
 			//ContentHandler.OnInvalidClientData("Spell {0} does not contain Aura Effect of type {1}", this, type);
 			//return null;
-			if (inited && force)
+			if (!init1 && force)
 			{
 				throw new ContentException("Spell {0} does not contain Aura Effect of type {1}", this, type);
 			}
@@ -853,7 +856,7 @@ namespace WCell.RealmServer.Spells
 			return null;
 		}
 
-		public List<SpellEffect> GetEffectsWhere(Predicate<SpellEffect> predicate)
+		public SpellEffect[] GetEffectsWhere(Predicate<SpellEffect> predicate)
 		{
 			List<SpellEffect> effects = null;
 			foreach (var effect in Effects)
@@ -867,7 +870,7 @@ namespace WCell.RealmServer.Spells
 					effects.Add(effect);
 				}
 			}
-			return effects;
+			return effects != null ? effects.ToArray() : null;
 		}
 
 		/// <summary>
@@ -1246,9 +1249,9 @@ namespace WCell.RealmServer.Spells
 			{
 				writer.WriteLine(indent + "AttributesExD: " + AttributesExD);
 			}
-			if ((int)ShapeshiftMask != 0)
+			if ((int)AllowedShapeshiftMask != 0)
 			{
-				writer.WriteLine(indent + "ShapeshiftMask: " + ShapeshiftMask);
+				writer.WriteLine(indent + "ShapeshiftMask: " + AllowedShapeshiftMask);
 			}
 			if ((int)ExcludeShapeshiftMask != 0)
 			{

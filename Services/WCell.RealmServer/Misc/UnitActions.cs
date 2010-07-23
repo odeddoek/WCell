@@ -109,7 +109,7 @@ namespace WCell.RealmServer.Misc
 	}
 	#endregion
 
-	#region SimpleUnitAction
+	#region HealAction
 	public class HealAction : SimpleUnitAction
 	{
 		public int Value
@@ -123,6 +123,12 @@ namespace WCell.RealmServer.Misc
 			get;
 			set;
 		}
+	}
+	#endregion
+
+	#region TrapTriggerAction
+	public class TrapTriggerAction : SimpleUnitAction
+	{
 	}
 	#endregion
 
@@ -297,7 +303,7 @@ namespace WCell.RealmServer.Misc
 			get
 			{
 				return Weapon != null &&
-					   (SpellEffect == null || SpellEffect.Spell.IsWeaponAbility);
+					   (SpellEffect == null || SpellEffect.Spell.IsPhysicalAbility);
 			}
 		}
 
@@ -636,13 +642,18 @@ namespace WCell.RealmServer.Misc
 
 		public void StrikeCritical()
 		{
-			Damage = Attacker.CalcCritDamage(Damage, Victim, SpellEffect).RoundInt();
+			IsCritical = Victim.StandState == StandState.Stand;
+			SetCriticalDamage();
 			HitFlags = HitFlags.NormalSwingAnim | HitFlags.Resist_1 | HitFlags.Resist_2 | HitFlags.CriticalStrike;
 			VictimState = VictimState.Wound;
 			Blocked = 0;
 			// Automatic double damage against sitting target - but doesn't proc crit abilities
-			IsCritical = Victim.StandState == StandState.Stand;
 			DoStrike();
+		}
+
+		public void SetCriticalDamage()
+		{
+			Damage = Attacker.CalcCritDamage(Damage, Victim, SpellEffect).RoundInt();
 		}
 
 		public void StrikeGlancing()
@@ -673,7 +684,6 @@ namespace WCell.RealmServer.Misc
 			{
 				var level = Attacker.Level;
 				var res = Victim.GetResistance(UsedSchool) - Attacker.GetTargetResistanceMod(UsedSchool);
-
 
 				if (res > 0)
 				{
@@ -710,8 +720,8 @@ namespace WCell.RealmServer.Misc
 					ResistPct = 0;
 				}
 
-				Victim.AddDefenseMods(this);
-				Attacker.AddAttackMods(this);
+				Victim.OnDefend(this);
+				Attacker.OnAttack(this);
 
 				Resisted = (ResistPct * Damage / 100f).RoundInt();
 				Absorbed = Victim.Absorb(UsedSchool, Damage);
@@ -847,7 +857,7 @@ namespace WCell.RealmServer.Misc
 		/// </summary>
 		public int CalcHitChance()
 		{
-			var hitchance = 0;
+			int hitchance = 0;
 			int skillBonus;
 
 			//uhm gotta set the variables for skills
@@ -866,20 +876,10 @@ namespace WCell.RealmServer.Misc
 
 			if (Attacker is Character)
 			{
+				
 				var atk = Attacker as Character;
-
-				var hitrating = atk.GetCombatRatingMod(CombatRating.MeleeHitChance);
-
-				if (!IsRangedAttack)
-				{
-					hitchance = (int)(100 * (hitrating / GameTables.GetCRTable(CombatRating.MeleeHitChance)[Attacker.Level - 1]));
-				}
-				else
-				{
-					hitchance = (int)(100 * (hitrating / GameTables.GetCRTable(CombatRating.RangedHitChance)[Attacker.Level - 1]));
-				}
+				hitchance += IsRangedAttack ? (int)atk.RangedHitChance*100 : (int)atk.HitChance*100;
 				skillBonus -= (int)atk.Skills.GetValue(Weapon.Skill);
-				hitchance += atk.HitChanceMod;
 			}
 			else
 			{
@@ -919,7 +919,7 @@ namespace WCell.RealmServer.Misc
 
 		/// <summary>
 		/// 2.1 calculation (3.30 is ~10% lower (24%))
-		/// Should be between 1 - 10000, 
+		/// Is between 1 - 10000, 
 		/// </summary>
 		/// <returns></returns>
 		public int CalcGlancingBlowChance()
@@ -988,15 +988,15 @@ namespace WCell.RealmServer.Misc
 		/// <returns>The crit chance after taking into account the defense/weapon skill</returns>
 		public int CalcCritChance()
 		{
-			var chance = Attacker.CalcCritChanceBase(Victim, SpellEffect, Weapon);
+			var chance = (int)Attacker.CalcCritChanceBase(Victim, SpellEffect, Weapon)*100;
 
 			if (Attacker is NPC && Victim is Character)
 			{
-				var weaponSkill = Attacker.Level * 5;
 				var chr = Victim as Character;
+				var weaponSkill = chr.Skills.GetValue(Weapon.Skill);
 				var defSkill = chr.Skills.GetValue(SkillId.Defense);
 
-				chance += 0.04f * (weaponSkill - defSkill);
+				chance += (int)(4 * (weaponSkill - defSkill));
 			}
 
 			if (Attacker is Character && Victim is NPC)
@@ -1007,20 +1007,20 @@ namespace WCell.RealmServer.Misc
 
 				if (defSkill > weaponSkill)
 				{
-					chance -= 0.2f * (defSkill - weaponSkill);
+					chance -= (int)(20 * (defSkill - weaponSkill));
 				}
 				// else: no change (mobs def is smaller than player's weapon skill)
 			}
 
 			// AttackerCritChance is not reflected in the tooltip but affects the crit chance against the Victim (increased/reduced)
-			var attackerCritChance = Victim.FloatMods[(int)StatModifierFloat.AttackerCritChance];
+			var attackerCritChance = Victim.FloatMods[(int)StatModifierFloat.AttackerCritChance]*100;
 			chance = UnitUpdates.GetMultiMod(attackerCritChance, chance);
 
-			if (chance > 100)
+			if (chance > 10000)
 			{
 				return 10000;
 			}
-			return (int)chance * 100;
+			return chance;
 		}
 
 		/// <summary>
@@ -1070,7 +1070,6 @@ namespace WCell.RealmServer.Misc
 		/// Calculates the parry chance taking into account the difference between 
 		/// the weapon skill of the attacker and the defense skill of the victim.
 		/// Also see <see cref="Unit.CalcParryChance"/>
-		/// TODO: Merge with Unit.CalcParryChance
 		/// </summary>
 		/// <returns>The chance between 1-10000</returns>
 		public int CalcParryChance()
@@ -1096,7 +1095,6 @@ namespace WCell.RealmServer.Misc
 		/// Calculates the dodge chance taking into account the difference between 
 		/// the weapon skill of the attacker and the defense skill of the victim.
 		/// Also see <see cref="Unit.CalcDodgeChance"/>
-		/// TODO: Merge with Unit.CalcDodgeChance
 		/// </summary>
 		/// <returns>The chance between 1-10000</returns>
 		public int CalcDodgeChance()

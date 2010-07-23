@@ -1,3 +1,2 @@
-- implemented ModSpellHitChance, ModCritHealValuePct, ModSpellPowerByAPPct, ModDamageDoneVersusCreatureType, ModCritHealValuePct, Avoidance effects
-- to test: PaladinHolySacredCleansing, PaladinProtectionTouchedByTheLight, PaladinHolyJudgementsOfThePure
-- moved spell-related events to Spell
+- fixed DruidFeralCombatLeaderOfThePack
+- to test: DruidFeralCombatFeralSwiftness, DruidFeralCombatHeartOfTheWild

@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using WCell.Constants;
 using WCell.Constants.Items;
 using WCell.Constants.Misc;
+using WCell.Constants.NPCs;
 using WCell.Constants.Quests;
 using WCell.Constants.Skills;
 using WCell.Constants.Spells;
@@ -730,6 +731,15 @@ namespace WCell.RealmServer.Entities
 				case CombatRating.DefenseSkill:
 					UnitUpdates.UpdateDefense(this);
 					break;
+				case CombatRating.MeleeHitChance:
+					UnitUpdates.UpdateMeleeHitChance(this);
+					break;
+				case CombatRating.RangedHitChance:
+					UnitUpdates.UpdateRangedHitChance(this);
+					break;
+				case CombatRating.Expertise:
+					UnitUpdates.UpdateExpertise(this);
+					break;
 			}
 		}
 
@@ -737,14 +747,9 @@ namespace WCell.RealmServer.Entities
 
 		#region Tracking of Resources & Creatures
 
-		/// <summary>
-		/// The Aura that activated a Resource- or CreatureTracker (or null if the player is not tracking anything)
-		/// </summary>
-		public Aura CurrentTracker { get; internal set; }
-
-		public CreatureTrackingMask CreatureTracking
+		public CreatureMask CreatureTracking
 		{
-			get { return (CreatureTrackingMask)GetUInt32(PlayerFields.TRACK_CREATURES); }
+			get { return (CreatureMask)GetUInt32(PlayerFields.TRACK_CREATURES); }
 			internal set { SetUInt32(PlayerFields.TRACK_CREATURES, (uint)value); }
 		}
 
@@ -812,6 +817,20 @@ namespace WCell.RealmServer.Entities
 			internal set { SetFloat(PlayerFields.OFFHAND_CRIT_PERCENTAGE, value); }
 		}
 
+		/// <summary>
+		/// Get total damage, after adding/subtracting all modifiers (is not used for DoT)
+		/// </summary>
+		public int GetTotalDamageDoneMod(DamageSchool school, int dmg, Spell spell = null)
+		{
+			dmg = UnitUpdates.GetMultiMod(GetFloat(PlayerFields.MOD_DAMAGE_DONE_PCT + (int)school), dmg);
+			if (spell != null)
+			{
+				dmg = PlayerSpells.GetModifiedInt(SpellModifierType.SpellPower, spell, dmg);
+			}
+			dmg += GetDamageDoneMod(school);
+			return dmg;
+		}
+
 		public int GetDamageDoneMod(DamageSchool school)
 		{
 			return GetInt32(PlayerFields.MOD_DAMAGE_DONE_POS + (int)school) -
@@ -843,12 +862,17 @@ namespace WCell.RealmServer.Entities
 		}
 
 		/// <summary>
-		/// Modifies the chance to hit
+		/// Character's hit chance in %
 		/// </summary>
-		public int HitChanceMod
+		public float HitChance
 		{
 			get;
 			set;
+		}
+
+		public float RangedHitChance
+		{
+			get; set;
 		}
 
 		public override uint Defense
@@ -1623,7 +1647,7 @@ namespace WCell.RealmServer.Entities
 			}
 		}
 
-		public ClientLocale Locale
+		public override ClientLocale Locale
 		{
 			get { return m_client.Info.Locale; }
 			set { m_client.Info.Locale = value; }

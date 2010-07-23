@@ -192,7 +192,7 @@ namespace WCell.Constants.Spells
 		ModIncreaseHealthPercent = 133,
 		ModManaRegenInterrupt = 134,
 		ModHealingDone = 135,
-		ModHealingTaken = 136,
+		ModHealingDonePct = 136,
 		ModTotalStatPercent = 137,
 		ModHaste = 138,
 		ForceReaction = 139,
@@ -263,8 +263,8 @@ namespace WCell.Constants.Spells
 		ModPartySpeed = 171,
 		ModPartySpeedMounted = 172,
 		Unused_AllowChampionSpells = 173,
-		ModSpellDamageByPercentOfSpirit = 174,
-		ModSpellHealingByPercentOfSpirit = 175,
+		ModSpellDamageByPercentOfStat = 174,
+		ModSpellHealingByPercentOfStat = 175,
 		SpiritOfRedemption = 176,
 		AoeCharm = 177,
 		ModDebuffResistancePercent = 178,
@@ -337,9 +337,12 @@ namespace WCell.Constants.Spells
 		ModSpeedMountedFlight = 207,
 		ModSpeedFlight = 208,
 		Aura_209 = 209,
-		Aura_210 = 210,
 		/// <summary>
-		/// Seems to be a copy of AuraModPartySpeedMounted
+		/// Modifies flight speed in %
+		/// </summary>
+		ModFlightSpeed = 210,
+		/// <summary>
+		/// Seems to be the same as AuraModPartySpeedMounted (increases mount speed)
 		/// </summary>
 		Aura_211 = 211,
 		ModRangedAttackPowerByPercentOfIntellect = 212,
@@ -490,7 +493,10 @@ namespace WCell.Constants.Spells
 		Aura_272 = 272,
 		Aura_273 = 273,
 		Aura_274 = 274,
-		Aura_275 = 275,
+		/// <summary>
+		/// Removes any shapeshift requirements, spells become usable when using any shapeshift form
+		/// </summary>
+		IgnoreShapeshiftRequirement = 275,
 		Aura_276 = 276,
 		Aura_277 = 277,
 		/// <summary>
@@ -540,6 +546,10 @@ namespace WCell.Constants.Spells
         Aura_304 = 304,
         Aura_305 = 305,
         Aura_306 = 307,
+		/// <summary>
+		/// No apparent effect, probably used in combination with talents
+		/// </summary>
+		UnkFrozenHunterDebuff,
 		End = 500
 	}
 

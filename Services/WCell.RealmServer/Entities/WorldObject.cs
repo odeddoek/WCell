@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using WCell.RealmServer.Lang;
 using WCell.Util.Collections;
 using NLog;
 using WCell.Constants;
@@ -418,7 +419,7 @@ namespace WCell.RealmServer.Entities
 		/// Either this or the master as Character. 
 		/// Returns null if neither is Character.
 		/// </summary>
-		public Character PlayerMaster
+		public Character CharacterMaster
 		{
 			get
 			{
@@ -427,6 +428,22 @@ namespace WCell.RealmServer.Entities
 					return (Character)this;
 				}
 				return m_master as Character;
+			}
+		}
+
+		/// <summary>
+		/// Either this or the master as Unit. 
+		/// Returns null if neither is Unit.
+		/// </summary>
+		public Unit UnitMaster
+		{
+			get
+			{
+				if (this is Unit)
+				{
+					return (Unit)this;
+				}
+				return m_master as Unit;
 			}
 		}
 		#endregion
@@ -1005,7 +1022,7 @@ namespace WCell.RealmServer.Entities
 		/// </summary>
 		public bool IsInFrontOfThis(Vector3 pos)
 		{
-			var angle = Math.Abs(m_orientation - GetAngleTowards(m_position));
+			var angle = Math.Abs(m_orientation - GetAngleTowards(pos));
 			return angle <= InFrontAngleMax ||
 				angle >= InFrontAngleMin;
 		}
@@ -1037,14 +1054,30 @@ namespace WCell.RealmServer.Entities
 		#endregion
 
 		#region Chatting
+		public virtual ClientLocale Locale
+		{
+			get;
+			set;
+		}
+
 		public virtual void Say(string message)
 		{
 			ChatMgr.SendMonsterMessage(this, ChatMsgType.MonsterSay, ChatLanguage.Universal, message);
 		}
 
+		public void Say(LangKey key, params object[] args)
+		{
+			Say(RealmLocalizer.Instance.Translate(Locale, key, args));
+		}
+
 		public void Say(string message, params object[] args)
 		{
 			Say(string.Format(message, args));
+		}
+
+		public void Yell(LangKey key, params object[] args)
+		{
+			Yell(RealmLocalizer.Instance.Translate(Locale, key, args));
 		}
 
 		public virtual void Yell(string message)
@@ -1055,6 +1088,11 @@ namespace WCell.RealmServer.Entities
 		public void Yell(string message, params object[] args)
 		{
 			Yell(string.Format(message, args));
+		}
+
+		public void Emote(LangKey key, params object[] args)
+		{
+			Emote(RealmLocalizer.Instance.Translate(Locale, key, args));
 		}
 
 		public virtual void Emote(string message)
@@ -1222,6 +1260,11 @@ namespace WCell.RealmServer.Entities
 			m_messageQueue.Enqueue(new Message(action));
 		}
 
+		public virtual bool IsTrap
+		{
+			get { return false; }
+		}
+
 		#region Factions/Hostility
 		public abstract Faction Faction
 		{
@@ -1337,7 +1380,7 @@ namespace WCell.RealmServer.Entities
 
 		public virtual bool MayAttack(IFactionMember opponent)
 		{
-			if (opponent == this || (opponent is Unit && ((Unit)opponent).Master == this))
+			if (!opponent.IsInWorld || opponent == this || (opponent is Unit && ((Unit)opponent).Master == this))
 			{
 				return false;
 			}
@@ -1428,7 +1471,7 @@ namespace WCell.RealmServer.Entities
 				{
 					if (value == null)
 					{
-						if ((this is GameObject && ((GameObject)this).IsTrap) || this is DynamicObject)
+						if (IsTrap || this is DynamicObject)
 						{
 							// remove trap when aura gets removed
 							Delete();
@@ -1456,11 +1499,18 @@ namespace WCell.RealmServer.Entities
 			get { return false; }
 		}
 
-		public bool BelongsToPlayer
+		/// <summary>
+		/// This or it's master is a player
+		/// </summary>
+		public bool IsOwnedByPlayer
 		{
 			get { return IsPlayer || (m_master != null && m_master.IsPlayer); }
 		}
 
+		/// <summary>
+		/// Whether this is actively controlled by a player. 
+		/// Not to be confused with IsOwnedByPlayer.
+		/// </summary>
 		public virtual bool IsPlayerControlled
 		{
 			get { return false; }

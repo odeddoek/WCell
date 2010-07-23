@@ -14,9 +14,10 @@ namespace WCell.RealmServer.Spells
 {
 	public partial class Spell
 	{
-
-
 		#region Spell Variables (that may be modified by spell customizations)
+		/// <summary>
+		/// Wheter this spell can be cast on players (automatically false for all taunts)
+		/// </summary>
 		public bool CanCastOnPlayer = true;
 
 		/// <summary>
@@ -61,6 +62,11 @@ namespace WCell.RealmServer.Spells
 		/// Used for teleport spells amongst others
 		/// </summary>
 		public Vector3 SpellTargetLocation;
+
+		/// <summary>
+		/// Wheter this Aura can proc
+		/// </summary>
+		public bool IsProc;
 
 		/// <summary>
 		/// Amount of millis before this Spell may proc another time (if it is a proc)

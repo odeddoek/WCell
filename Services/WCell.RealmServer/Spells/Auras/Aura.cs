@@ -270,9 +270,9 @@ namespace WCell.RealmServer.Spells.Auras
 		/// <summary>
 		/// The actual Caster (returns null if caster went offline)
 		/// </summary>
-		public WorldObject Caster
+		public Unit Caster
 		{
-			get { return m_casterInfo.Caster; }
+			get { return m_casterInfo.CasterUnit; }
 		}
 
 		public Unit Owner
@@ -485,9 +485,6 @@ namespace WCell.RealmServer.Spells.Auras
 				handler.Init(this);
 			}
 
-
-
-
 			CheckActivation();
 
 			m_auras.OnAuraChange(this);
@@ -524,36 +521,21 @@ namespace WCell.RealmServer.Spells.Auras
 			}
 		}
 
+		/// <summary>
+		/// These checks coincide with the checks in <see cref="PlayerAuraCollection"/>
+		/// </summary>
 		internal void CheckActivation()
 		{
 			var owner = Owner as Character;
 			if (owner == null ||
 				!m_spell.IsPassive ||
-				!m_spell.HasItemRequirements ||
-				m_spell.CheckItemRestrictionsWithout(null, owner.Inventory) == SpellFailedReason.Ok)
+				((!m_spell.HasItemRequirements || m_spell.CheckItemRestrictionsWithout(null, owner.Inventory) == SpellFailedReason.Ok) &&
+				(m_spell.AllowedShapeshiftMask == 0 || m_spell.AllowedShapeshiftMask.HasAnyFlag(owner.ShapeshiftMask))))
 			{
 				IsActive = true;
 			}
 		}
 
-		internal void EvalActive(Item item, bool equip)
-		{
-			if (m_spell.IsPassive && m_spell.HasItemRequirements)
-			{
-				// is only called for Characters
-				var plr = (Character)m_auras.Owner;
-				if (equip && !m_IsActive)
-				{
-					// check if new item satisfys conditions
-					IsActive = Spell.CheckItemRestrictions(item, plr.Inventory) == SpellFailedReason.Ok;
-				}
-				else if (!equip && m_IsActive)
-				{
-					// check if the conditions are still met
-					IsActive = m_spell.CheckItemRestrictionsWithout(item, plr.Inventory) == SpellFailedReason.Ok;
-				}
-			}
-		}
 		#endregion
 
 		#region Apply & Stack
@@ -711,9 +693,20 @@ namespace WCell.RealmServer.Spells.Auras
 		#endregion
 
 		#region Remove & Cancel
+		/// <summary>
+		/// Cancels and removes this Aura
+		/// </summary>
 		public void Cancel()
 		{
-			Remove(true);
+			var owner = m_auras.Owner;
+			if (owner.AreaAura != null && owner.AreaAura.Spell == m_spell)
+			{
+				owner.AreaAura.Remove(true);
+			}
+			else
+			{
+				Remove(true);
+			}
 		}
 
 		public bool TryRemove(bool cancelled)
@@ -743,7 +736,8 @@ namespace WCell.RealmServer.Spells.Auras
 		}
 
 		/// <summary>
-		/// Removes this Aura from the player
+		/// Removes this Aura from the player, but does not remove an AreaAura if it is triggered
+		/// by this Aura. Use Cancel instead.
 		/// </summary>
 		/// <param name="cancelled"></param>
 		public void Remove(bool cancelled)
@@ -924,8 +918,38 @@ namespace WCell.RealmServer.Spells.Auras
 			set;
 		}
 
-		public bool CanBeTriggeredBy(Unit target, IUnitAction action, bool active)
+		public bool CanBeTriggeredBy(Unit triggerer, IUnitAction action, bool active)
 		{
+			var hasProcEffects = m_spell.ProcTriggerEffects != null;
+			var canProc = false;
+
+			if (hasProcEffects)
+			{
+				foreach (var handler in m_handlers)
+				{
+					if (handler.SpellEffect.IsProc)
+					{
+						// only trigger proc effects or all effects, if there arent any proc-specific effects
+						if ((!handler.SpellEffect.HasAffectMask ||
+							(action.Spell != null && action.Spell.MatchesMask(handler.SpellEffect.AffectMask))))
+						{
+							// only trigger if no AffectMask is set or the triggerer matches the proc mask
+							canProc = true;
+							break;
+						}
+					}
+				}
+			}
+			else
+			{
+				// Simply count down stack count and remove aura eventually
+				canProc = true;
+			}
+			if (!canProc)
+			{
+				return false;
+			}
+
 			if (m_spell.CanProcBeTriggeredBy(m_auras.Owner, action, active))
 			{
 				return true;
@@ -948,7 +972,7 @@ namespace WCell.RealmServer.Spells.Auras
 						if ((!handler.SpellEffect.HasAffectMask ||
 							(action.Spell != null && action.Spell.MatchesMask(handler.SpellEffect.AffectMask))))
 						{
-							// only trigger if no AffectMask is set or the triggerer matches the proc mask
+							// only trigger if no AffectMask is set or the trigger matches the proc mask
 							handler.OnProc(triggerer, action);
 							proced = true;
 						}
@@ -957,7 +981,7 @@ namespace WCell.RealmServer.Spells.Auras
 			}	
 			else
 			{
-				// Simply count down stack count and remove aura eventually
+				// Simply reduce stack count and remove aura eventually
 				proced = true;
 			}
 

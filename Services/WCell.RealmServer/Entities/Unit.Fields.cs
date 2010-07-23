@@ -28,6 +28,7 @@ using WCell.RealmServer.Modifiers;
 using WCell.RealmServer.Handlers;
 using WCell.RealmServer.NPCs.Vehicles;
 using WCell.RealmServer.Spells;
+using WCell.RealmServer.Spells.Auras;
 using WCell.Util;
 using WCell.RealmServer.NPCs;
 using WCell.Constants.Items;
@@ -1142,12 +1143,23 @@ namespace WCell.RealmServer.Entities
 			set { SetByte(UnitFields.BYTES_2, 2, (byte)value); }
 		}
 
+		#endregion
+
+		#region Shapeshifting
+		/// <summary>
+		/// The entry of the current shapeshift form
+		/// </summary>
+		public ShapeshiftEntry ShapeshiftEntry
+		{
+			get { return SpellHandler.ShapeshiftEntries.Get((uint)ShapeshiftForm); }
+		}
+
 		public ShapeshiftForm ShapeshiftForm
 		{
 			get { return (ShapeshiftForm)GetByte(UnitFields.BYTES_2, 3); }
 			set
 			{
-				// TODO: Shapeshifters dont hit with their weapon
+				// TODO: Shapeshifters dont use their weapons
 				// TODO: AttackTime is overridden
 				// TODO: Horde shapeshifters are missing some models
 
@@ -1170,7 +1182,7 @@ namespace WCell.RealmServer.Entities
 						}
 					}
 				}
-
+				
 
 				var entry = SpellHandler.ShapeshiftEntries.Get((uint)value);
 				if (entry != null)
@@ -1199,17 +1211,21 @@ namespace WCell.RealmServer.Entities
 				}
 
 				SetByte(UnitFields.BYTES_2, 3, (byte)value);
+
+				if (m_auras is PlayerAuraCollection)
+				{
+					((PlayerAuraCollection)m_auras).OnShapeshiftFormChanged();
+				}
 			}
 		}
 
-		public ShapeShiftMask ShapeShiftMask
+		public ShapeshiftMask ShapeshiftMask
 		{
 			get
 			{
-				return (ShapeShiftMask)(1 << (int)(ShapeshiftForm));
+				return (ShapeshiftMask)(1 << (int)(ShapeshiftForm - 1));
 			}
 		}
-
 		#endregion
 
 		/// <summary>
@@ -1229,7 +1245,8 @@ namespace WCell.RealmServer.Entities
 		}
 
 		/// <summary>
-		/// Whether this is a Player or owned by a player
+		/// Whether this is actively controlled by a player. 
+		/// Not to be confused with IsOwnedByPlayer.
 		/// </summary>
 		public override bool IsPlayerControlled
 		{
@@ -1255,8 +1272,22 @@ namespace WCell.RealmServer.Entities
 	    }
 
 		#region Health
+
 		public void Kill()
 		{
+			Kill(null);
+		}
+
+		public void Kill(Unit killer)
+		{
+			if (killer != null)
+			{
+				if (FirstAttacker == null)
+				{
+					FirstAttacker = killer;
+				}
+				LastKiller = killer;
+			}
 			Health = 0;
 		}
 
@@ -1358,7 +1389,7 @@ namespace WCell.RealmServer.Entities
 
 		public int HealthPct
 		{
-			get { return (100 * Health) / MaxHealth; }
+			get { return (100 * Health + (1 >> MaxHealth)) / MaxHealth; }
 			set { Health = ((value * MaxHealth) + 50) / 100; }
 		}
 

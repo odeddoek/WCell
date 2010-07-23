@@ -1,4 +1,4 @@
-﻿/*************************************************************************
+/*************************************************************************
  *
  *   file		: NPC.cs
  *   copyright		: (C) The WCell Team
@@ -147,7 +147,7 @@ namespace WCell.RealmServer.Entities
 			// Set model after Scale
 			Model = m_entry.GetRandomModel();
 
-			m_gossipMenu = entry.DefaultGossip; // set gossip menu
+			GossipMenu = entry.DefaultGossip; // set gossip menu
 
 			// TODO: Init stats
 			//for (int i = 0; i < 5; i++)
@@ -889,8 +889,7 @@ namespace WCell.RealmServer.Entities
 		/// </summary>
 		public bool CheckCreatureType(CreatureMask mask)
 		{
-			var type = Entry.Type;
-		    return mask.HasFlag((CreatureMask) (1 << ((int) type - 1)));
+			return mask.HasFlag((CreatureMask)(1 << ((int)Entry.Type - 1)));
 		}
 
 		internal void SetScale()
@@ -1161,11 +1160,6 @@ namespace WCell.RealmServer.Entities
 		/// </summary>
 		protected internal override void OnDamageAction(IDamageAction action)
 		{
-			if (m_FirstAttacker == null && action.Attacker != null)
-			{
-				FirstAttacker = action.Attacker;
-			}
-
 			if (!action.Victim.IsAlive && YieldsXpOrHonor && action.Attacker is Character && action.Attacker.YieldsXpOrHonor)
 			{
 				action.Attacker.Proc(ProcTriggerFlags.GainExperience, this, action, true);

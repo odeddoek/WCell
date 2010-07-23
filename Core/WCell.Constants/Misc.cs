@@ -260,15 +260,6 @@ namespace WCell.Constants
 	}
 
 	/// <summary>
-	/// Mask of NPCType
-	/// </summary>
-	[Flags]
-	public enum CreatureTrackingMask : uint
-	{
-		None = 0,
-	}
-
-	/// <summary>
 	/// Mask of LockInteractionType
 	/// </summary>
 	[Flags]
@@ -314,7 +305,7 @@ namespace WCell.Constants
 	}
 
 	[Flags]
-	public enum ShapeShiftMask : uint
+	public enum ShapeshiftMask : uint
 	{
 		Cat = 1,
 		TreeOfLife = 2,
@@ -450,7 +441,6 @@ namespace WCell.Constants
 
 	public enum StatModifierFloat
 	{
-		Health = 0,
 		Power,
 		AttackerCritChance,
         BlockValue,
@@ -483,6 +473,7 @@ namespace WCell.Constants
 		BlockValue,
         ParryChance,
         RangedCritChance,
+		HitChance,
 
 		RangedAttackPowerByPercentOfIntellect,
 
@@ -492,8 +483,14 @@ namespace WCell.Constants
 
 		AttackerMeleeHitChance,
 		AttackerRangedHitChance,
+		/// <summary>
+		/// A negative chance that reduces target's dodge chance
+		/// </summary>
+		TargetDodgesAttackChance,
 
-		CriticalHealValuePct
+		CriticalHealValuePct,
+
+		Expertise
 	}
 
 	public enum AreaTriggerType : uint

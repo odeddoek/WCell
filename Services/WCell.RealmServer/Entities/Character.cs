@@ -3,7 +3,7 @@
  *   file		: Character.cs
  *   copyright		: (C) The WCell Team
  *   email		: info@wcell.org
- *   last changed	: $LastChangedDate: 2010-02-20 06:16:32 +0100 (lø, 20 feb 2010) $
+ *   last changed	: $LastChangedDate: 2010-02-20 06:16:32 +0100 (lï¿½, 20 feb 2010) $
  *   last author	: $LastChangedBy: dominikseifert $
  *   revision		: $Rev: 1257 $
  *
@@ -35,6 +35,7 @@ using WCell.RealmServer.Help.Tickets;
 using WCell.RealmServer.Instances;
 using WCell.RealmServer.Interaction;
 using WCell.RealmServer.Items;
+using WCell.RealmServer.Lang;
 using WCell.RealmServer.Looting;
 using WCell.RealmServer.Misc;
 using WCell.RealmServer.Modifiers;
@@ -347,7 +348,7 @@ namespace WCell.RealmServer.Entities
 			base.OnDamageAction(action);
 
 			var pvp = action.Attacker.IsPvPing;
-			var chr = action.Attacker.PlayerMaster;
+			var chr = action.Attacker.CharacterMaster;
 
 			var killingBlow = !IsAlive;
 
@@ -729,9 +730,9 @@ namespace WCell.RealmServer.Entities
 		/// <summary>
 		/// Sends a message to the client.
 		/// </summary>
-		public void SendSystemMessage(string msg)
+		public void SendSystemMessage(LangKey key, params object[] args)
 		{
-			ChatMgr.SendSystemMessage(this, msg);
+			ChatMgr.SendSystemMessage(this, RealmLocalizer.Instance.Translate(Locale, key, args));
 		}
 
 		/// <summary>
@@ -742,12 +743,9 @@ namespace WCell.RealmServer.Entities
 			ChatMgr.SendSystemMessage(this, string.Format(msg, args));
 		}
 
-		/// <summary>
-		/// Flashes a notification in the middle of the screen
-		/// </summary>
-		public void Notify(string msg)
+		public void Notify(LangKey key, params object[] args)
 		{
-			MiscHandler.SendNotification(this, msg);
+			Notify(RealmLocalizer.Instance.Translate(Locale, key, args));
 		}
 
 		/// <summary>
@@ -1350,29 +1348,33 @@ namespace WCell.RealmServer.Entities
 		/// <summary>
 		/// Adds all damage boni and mali
 		/// </summary>
-		public override void AddAttackMods(DamageAction action)
+		public void AddDamageModsToAction(DamageAction action)
 		{
-			base.AddAttackMods(action);
-			var dmg = UnitUpdates.GetMultiMod(GetFloat(PlayerFields.MOD_DAMAGE_DONE_PCT + (int)action.UsedSchool), action.Damage);
-			if (action.Spell != null)
-			{
-				dmg = PlayerSpells.GetModifiedInt(SpellModifierType.SpellPower, action.Spell, dmg);
-			}
+			int dmg;
 
-			dmg += GetDamageDoneMod(action.UsedSchool);
+			if (!action.IsDot)
+			{
+				// does not add to dot
+				dmg = GetTotalDamageDoneMod(action.UsedSchool, action.Damage, action.Spell);
+			}
+			else
+			{
+				// periodic damage mod
+				dmg = PlayerSpells.GetModifiedInt(SpellModifierType.PeriodicEffectValue, action.Spell, action.Damage);
+			}
 			action.Damage = dmg;
 		}
 
-		public override int AddHealingMods(int dmg, SpellEffect effect, DamageSchool school)
+		public override int AddHealingModsToAction(int healValue, SpellEffect effect, DamageSchool school)
 		{
-			dmg += (int)((dmg * HealingDoneModPct) / 100f);
-			dmg += HealingDoneMod;
+			healValue += (int)((healValue * HealingDoneModPct) / 100f);
+			healValue += HealingDoneMod;
 			if (effect != null)
 			{
-				dmg = PlayerSpells.GetModifiedInt(SpellModifierType.SpellPower, effect.Spell, dmg);
+				healValue = PlayerSpells.GetModifiedInt(SpellModifierType.SpellPower, effect.Spell, healValue);
 			}
 
-			return dmg;
+			return healValue;
 		}
 
 		public override int GetGeneratedThreat(int dmg, DamageSchool school, SpellEffect effect)
